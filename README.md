@@ -54,6 +54,20 @@ php artisan config:clear
 php artisan test
 ```
 
+## Quality Checks
+
+Run these scripts from the project root:
+
+```bash
+composer run lint:check
+composer run types:check
+npm run build
+npm run check
+npm run types:check
+```
+
+Pint checks PHP formatting. PHPStan with Larastan analyzes PHP at level 7. The frontend build generates the Wayfinder route files used by the frontend checks. Vite+ checks formatting and lint rules, and `vue-tsc` checks types in TypeScript and Vue files.
+
 ## Working Conventions
 
 - `main` contains integrated work. Use focused task branches and review changes before committing.
