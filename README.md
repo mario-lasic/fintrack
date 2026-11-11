@@ -6,7 +6,7 @@ FinTrack is a personal and household finance application in development. Planned
 
 The application currently contains the official Laravel Vue starter foundation and its generated authentication pages. Financial workflows are not implemented yet.
 
-The starter currently uses SQLite. PostgreSQL is the intended application database; its Laravel connection and separate test database configuration are pending. The PostgreSQL test baseline has not been established.
+The local setup below uses PostgreSQL. Development and testing use separate databases and roles. The PHPUnit configuration for PostgreSQL is pending.
 
 ## Stack
 
@@ -17,13 +17,17 @@ The starter currently uses SQLite. PostgreSQL is the intended application databa
 
 ## Local Setup
 
-The verified development environment uses PHP 8.5, Composer 2, and Node.js 26 with npm. The current SQLite bootstrap requires PHP's `pdo_sqlite` extension. PostgreSQL 18 and `pdo_pgsql` will support the planned database connection.
+The development setup uses PHP 8.5 with `pdo_pgsql`, Composer 2, PostgreSQL 18, and Node.js 26 with npm. Start PostgreSQL and use a local `fintrack_dev` database with a `fintrack_dev` login that can create tables in the `public` schema.
 
-From a fresh checkout, using the current SQLite defaults:
+From a fresh checkout, copy the environment template:
 
 ```bash
 cp .env.example .env
-touch database/database.sqlite
+```
+
+In `.env`, set `DB_DATABASE` and `DB_USERNAME` to `fintrack_dev`. Set `DB_PASSWORD` to the password for that role. The template uses PostgreSQL on `127.0.0.1:5432`.
+
+```bash
 composer install
 php artisan key:generate
 php artisan migrate
@@ -37,7 +41,7 @@ Start local development:
 composer run dev
 ```
 
-Open the URL printed by the development server, normally `http://localhost:8000`. The initial application, login, and registration pages have been checked manually. A successful frontend build does not establish that the automated test suite passes.
+Open the URL printed by the development server, normally `http://localhost:8000`.
 
 ## Working Conventions
 
