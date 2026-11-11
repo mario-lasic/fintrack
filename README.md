@@ -6,7 +6,7 @@ FinTrack is a personal and household finance application in development. Planned
 
 The application currently contains the official Laravel Vue starter foundation and its generated authentication pages. Financial workflows are not implemented yet.
 
-The local setup below uses PostgreSQL. Development and testing use separate databases and roles. The PHPUnit configuration for PostgreSQL is pending.
+The local setup uses PostgreSQL with separate databases and roles for development and testing.
 
 ## Stack
 
@@ -42,6 +42,17 @@ composer run dev
 ```
 
 Open the URL printed by the development server, normally `http://localhost:8000`.
+
+## Run Tests
+
+Use a dedicated `fintrack_test` database and a `fintrack_test` login with permission to create tables in the `public` schema. The test suite can recreate tables in this database.
+
+For a new test environment, copy `.env.example` to `.env.testing`. Set `APP_ENV=testing`, `DB_DATABASE=fintrack_test`, `DB_USERNAME=fintrack_test`, and `DB_PASSWORD` to the test role's password. Generate a test application key once with `php artisan key:generate --env=testing`.
+
+```bash
+php artisan config:clear
+php artisan test
+```
 
 ## Working Conventions
 
