@@ -1,6 +1,6 @@
 # FinTrack Financial Domain and Privacy
 
-This document records the agreed design for the planned MVP financial model. The ERD and PostgreSQL integrity constraints are covered separately by ARC-03.
+This document records the agreed domain boundaries, privacy rules, and relational design for the planned MVP financial model.
 
 ## ARC-01 — Domain Boundaries and Terminology
 
@@ -45,3 +45,39 @@ A transfer requires two distinct accounts in the same household and permission t
 - **Allowed.** Ana, a `member`, transfers €50 from her private checking account to a shared account. She can see both sides. Marko, an `owner` of the household, sees the incoming €50 transfer and its date on the shared account.
 - **Denied.** Marko cannot open Ana's private account through a direct link or reverse the transfer. The shared account activity remains visible to him.
 - **Denied.** Ana cannot transfer directly between accounts in two different households, even if she is an active member of both.
+
+## ARC-03 — Initial ERD and Integrity Constraints
+
+Each financial record belongs to one household. Tables use a single-column primary key `id`. Required household references carry a non-null `household_id`. Relationships between records in the same household use a composite foreign key on `(household_id, related_id)` against the target's unique `(household_id, id)` pair.
+
+```mermaid
+erDiagram
+    USER ||--o{ HOUSEHOLD_MEMBERSHIP : has
+    HOUSEHOLD ||--|{ HOUSEHOLD_MEMBERSHIP : has
+    HOUSEHOLD ||--o{ ACCOUNT : contains
+    HOUSEHOLD ||--o{ CATEGORY : contains
+    HOUSEHOLD ||--o{ LEDGER_ACCOUNT : contains
+    HOUSEHOLD ||--o{ JOURNAL_ENTRY : contains
+    ACCOUNT |o--o| LEDGER_ACCOUNT : maps_to
+    JOURNAL_ENTRY ||--|{ POSTING : contains
+    LEDGER_ACCOUNT ||--o{ POSTING : receives
+    JOURNAL_ENTRY ||--o| TRANSACTION : supports
+    CATEGORY |o--o{ TRANSACTION : classifies
+```
+
+| Relationship | Constraint |
+| --- | --- |
+| `HouseholdMembership` → `User`, `Household` | Both references are required. `UNIQUE (household_id, user_id)` allows one membership record per user and household. The record carries the `owner` or `member` role and is retained when deactivated. |
+| `Account` → owning membership | A private account requires `(household_id, owner_user_id)` to match a membership. A shared account belongs to the household with an empty `owner_user_id`. The application checks active membership and enforces the ARC-02 permissions. |
+| `LedgerAccount` → `Account` | An `asset` ledger account requires an `account_id` in the same household. Internal ledger accounts leave `account_id` empty. Uniqueness on the mapping allows at most one asset ledger account per financial account. Once the ledger is enabled, account creation also creates its asset ledger account. |
+| `Posting` → `JournalEntry`, `LedgerAccount` | Both references are required and use the posting's `household_id`, so the journal and ledger account must belong to the same household as the posting. |
+| `Transaction` → `JournalEntry`, `Category` | Each transaction references one journal entry in its household. The journal link is unique, so a journal entry has at most one transaction. An opening balance has a journal entry without a transaction. A category reference, when present, must be in the same household. |
+| `Category` → parent `Category` | A parent is optional. If present, it must belong to the same household. |
+
+Use `ON DELETE RESTRICT` for references that preserve membership, account ownership, or financial history. An archived account retains its history, and deactivating a membership removes access while preserving the membership record. ARC-04 covers the separate rules that protect posted entries and postings from changes.
+
+### Relationship Walkthrough
+
+- **Valid transfer.** Ana transfers €50 from her private checking account to a shared account in household A. The transaction links to a journal in A. Both postings link to that journal and to their respective ledger accounts in A.
+- **Rejected reference.** Substituting a destination ledger account from household B fails because `(A, destination_ledger_account_id)` does not exist as a ledger account pair.
+- **Denied access within a household.** Marko's attempt to post from Ana's private account in household A can satisfy the foreign keys. The application denies the operation under ARC-02.
