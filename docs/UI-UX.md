@@ -21,25 +21,82 @@ Account actions depend on the user's role and the account's visibility in the [h
 
 ## Visual Foundations
 
-Use a light canvas, white surfaces, dark text, and one teal accent for primary actions. Keep the layout quiet with spacing, borders, and clear type hierarchy. Give amounts and the current financial context visual priority. Reuse the Laravel Vue starter components for navigation, menus, buttons, inputs, and confirmation dialogs, then apply the shared visual tokens.
+Use a light canvas, white surfaces, dark text, and one teal accent for primary actions. Keep the layout quiet with spacing, borders, and clear type hierarchy. Give amounts and the current financial context visual priority.
 
-| Role | Token |
+### Starter Components
+
+| FinTrack use | Starter components and adaptation |
 |---|---|
-| Canvas | `#F6F8FA` |
-| Surface and primary button text | `#FFFFFF` |
-| Primary text | `#17212B` |
-| Secondary text | `#475569` |
-| Primary action and focus indicator | `#0F766E` |
-| Control outlines | `#64748B` |
-| Decorative dividers | `#E2E8F0` |
-| Error text | `#B42318` |
+| Application shell | Use `AppSidebarLayout` and `AppSidebar` on wide screens. Use the same labeled navigation links in a bottom bar on phones. Adapt the starter's narrow sidebar, which currently opens a sheet, and use the same breakpoint for both navigation layouts. Mark the current page in each layout. |
+| Profile and financial context | Keep the starter profile menu. Use a labeled `DropdownMenu` with radio items for the active household and view. Use `Select` with a visible label for account, category, and other form choices. |
+| Actions and summaries | Reuse `Button` for actions and `Card` for overview metrics. Use a primary button for the page's main action, a quieter style for secondary actions, and destructive styling on the final reversal confirmation. Let long action labels wrap on small screens. |
+| Form fields and errors | Reuse `Label`, `Input`, and `InputError`. Associate the field with its label and error, and expose its invalid state. Use `Alert` for a page-level error or status that should remain visible. |
+| Confirmation and feedback | Reuse `Dialog` with a visible title and description. Use `Skeleton` for loading content and `Spinner` alongside a descriptive button label while saving. |
 
-- **Type.** Use Inter with a system sans-serif fallback. Start with 16 px body text, 14 px secondary text, 24 px page titles, and 28–32 px summary amounts. Use tabular numerals and right-align comparable amounts.
-- **Spacing.** Use a 4 px base with 8–12 px between related controls, 16 px inside mobile cards, and 24 px between sections. Give each page one prominent primary action.
-- **Forms.** Give controls persistent labels and place help or errors beside the relevant field. Keep the save destination visible on financial forms and in the primary button label, for example `Save to Personal`. After an invalid submission, retain valid input and move focus to the first invalid field or a linked error summary.
-- **Money and dates.** Display EUR using Croatian formatting, for example `2.840,00 €`, `+2.100,00 €`, and `−48,20 €`. Use a visible `EUR` label on amount inputs and a decimal comma hint where needed. Use the configured business date for transaction dates and period boundaries. Wireframe labels are in English for documentation.
-- **Accessibility.** Use a visible focus outline with an offset, a logical tab order, and keyboard-operable menus and dialogs. Return focus to the invoking control when a dialog closes. Pair status colors with words or signs, and announce form errors and save results to assistive technology.
-- **Responsive layout.** Use a sidebar on wide screens and labeled bottom navigation on phones. Keep the context picker at the top and the primary action near the page title. Stack summary metrics and form fields on narrow screens. Present transactions as rows with a name, date, and amount on phones, with other fields in the detail view. Leave room for the bottom navigation and use 44 px as the touch target design size.
+### Colors and Typography
+
+Apply the palette through the existing semantic tokens in `resources/css/app.css`. These values specify the light appearance. Keep the starter's Light, Dark, and System preference and use its theme variables for dark mode. Check contrast in both appearances when the financial screens are implemented.
+
+| Role | Starter token or use | Light color |
+|---|---|---|
+| Canvas | `--background` | `#F6F8FA` |
+| Surface and primary button text | `--card`, `--popover`, `--primary-foreground` | `#FFFFFF` |
+| Primary text | `--foreground`, card and popover text | `#17212B` |
+| Secondary text | `--muted-foreground` | `#475569` |
+| Primary action and focus indicator | `--primary`, `--ring` | `#0F766E` |
+| Primary hover | Button hover background | `#0B615B` |
+| Control outlines | `--input` | `#64748B` |
+| Decorative dividers | `--border` | `#E2E8F0` |
+| Error text and reversal confirmation | `--destructive` | `#B42318` |
+
+Use Inter with a system sans-serif fallback. Use 16 px for body text, 14 px for secondary text, 24 px for page titles, and 28–32 px for summary amounts. Use tabular numerals and right-align comparable amounts. Use a 4 px spacing scale with 8–12 px between related controls, 16 px inside mobile cards, and 24 px between sections.
+
+### Forms and Keyboard
+
+- Use persistent field labels and place help and errors beside the field. Keep the save destination visible on financial forms and in the primary button label, for example `Save to Personal`. After an invalid submission, retain valid input and move focus to the first invalid field or a linked error summary.
+- Follow the visual reading order with Tab and Shift+Tab. The context menu opens with Enter or Space, supports arrow navigation, and closes with Escape. Return focus to its trigger when dismissed. In a confirmation dialog, keep focus inside, initially focus `Cancel` for a reversal, and restore focus when the dialog closes. Announce form errors and save results to assistive technology.
+- Use a solid 2 px focus outline with a 2 px offset. Keep focused controls visible above the mobile bottom bar. Pair status colors with words or signs. Use underlines for inline links where the color alone would be the only cue.
+
+### Money and Dates
+
+Display EUR using Croatian formatting, for example `2.840,00 €`, `+2.100,00 €`, and `−48,20 €`. Use a visible `EUR` suffix and a decimal keyboard for amount entry. Show a local example such as `48,20`, keep the entered string while the user edits, and display an error for unsupported formats or excess precision. MONEY-01 defines the supported formats and range. Use the configured business date for transaction dates and period boundaries. Wireframe labels are in English for documentation.
+
+### Responsive Layout
+
+- Below 768 CSS px, use labeled bottom navigation and one content column. Keep the financial context and main action near the top. Allow the household name to wrap and reserve space for the bottom bar and device safe area.
+- At 768 CSS px and above, use the sidebar. Let summary cards sit side by side only when their labels and amounts fit. Present transactions as a compact list on phones and show additional columns on wide screens.
+- At 320 CSS px, let long transaction names wrap and place the amount on its own line when needed. Keep its currency and sign visible. The narrow layout must remain usable without horizontal page scrolling. Use at least 44 × 44 CSS px for touch targets on mobile.
+
+The narrow transaction form keeps the invalid amount, its error, and the save destination visible.
+
+```text
+[Shared · Novak Household and
+ Renovation Fund              ▾]
+
+Add expense
+
+Amount
+[48,205                   EUR]
+Enter up to two decimal places.
+
+Account
+[Checking                  ▾]
+Category
+[Groceries                 ▾]
+Date
+[16.11.2026.                  ]
+[Save to Novak Household and
+ Renovation Fund]
+
+Overview  Transactions  Accounts
+```
+
+### UX-02 Design Review
+
+- **Contrast.** Calculated light color pairs against the thresholds for normal text and controls. Primary text on white is 16.29:1, secondary text on the canvas is 7.12:1, white on the primary button is 5.47:1 (7.30:1 on hover), and error text on white is 6.57:1. The input outline and solid focus outline against the canvas are 4.47:1 and 5.14:1. At 50% opacity, the teal focus color over white is about 2.15:1, so the design specifies a solid outline. See [WCAG text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html) and [WCAG non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html).
+- **Keyboard walkthrough.** Reviewed the starter menu, select, and dialog components and traced opening and dismissing the context picker, submitting an invalid amount, and canceling a reversal. The expected focus destinations are the picker trigger, the input with the validation error, and the reversal trigger, respectively.
+- **Narrow-screen walkthrough.** Reviewed the overview wireframe and the form layout at the 320 CSS px design target. With a long household name and an amount such as `−1.234.567,89 €`, the single column leaves room for the name to wrap and the full amount to move below its label. The form allows the destination on the save button to wrap and keeps the action clear of the bottom bar. See [WCAG reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html).
+- **Browser verification.** Check the rendered component sizes, focus order and visibility, error announcements, color pairs in both appearances, and reflow at 320 CSS px when the financial screens are implemented.
 
 ## Overview Wireframes
 
