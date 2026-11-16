@@ -81,3 +81,39 @@ Use `ON DELETE RESTRICT` for references that preserve membership, account owners
 - **Valid transfer.** Ana transfers €50 from her private checking account to a shared account in household A. The transaction links to a journal in A. Both postings link to that journal and to their respective ledger accounts in A.
 - **Rejected reference.** Substituting a destination ledger account from household B fails because `(A, destination_ledger_account_id)` does not exist as a ledger account pair.
 - **Denied access within a household.** Marko's attempt to post from Ana's private account in household A can satisfy the foreign keys. The application denies the operation under ARC-02.
+
+## ARC-04 — Financial and Temporal Invariants
+
+### Money and Posting
+
+- Store EUR amounts as integer cents and use exact arithmetic. For example, €40.25 is 4,025 cents. Reject amounts with more than two decimal places or outside the supported range.
+- A `Posting` has a positive amount and an explicit `debit` or `credit` side. A valid `JournalEntry` has at least two postings in one household, with equal total debits and credits.
+- Commit the journal entry, its postings, and its `Transaction` when applicable in one database transaction. A failure rolls back the entire operation.
+- Derive asset balances by subtracting credits from debits. A cash account must have a nonnegative closing balance on each business date. For a backdated entry, check each affected closing balance. Bank account balances may be negative.
+- Record at most one opening journal entry per account. A positive opening balance debits the asset account and credits `Opening Equity`. An allowed negative balance uses the opposite sides. A zero opening balance creates no journal entry.
+
+### Business Dates and Corrections
+
+- `business_date` determines which day an event affects in balances and reports. Default to the current date in `Europe/Zagreb`. Ordinary events can be posted with an earlier business date. Future events belong to planning.
+- `posted_at` records the actual posting instant in UTC for audit purposes. A balance as of a business date includes all posted entries with a business date on or before that date.
+- Posted financial fields and postings are immutable. A reversal is a new journal entry linked to the original, with the same ledger accounts and amounts, opposite posting sides, an actor, and a reason. An original can be reversed at most once.
+- Use the business date of the correction for the reversal. When a correction includes a replacement, post the reversal and the replacement together on that date in one database transaction.
+- Calculate net income as credits less debits on income accounts and net expenses as debits less credits on expense accounts. An expense reversal reduces net expenses in its own reporting period. Opening balances and transfers are excluded from both totals.
+
+### Idempotency
+
+Scope each idempotency key to the actor within the household. A retry with the same key and the same business inputs returns the result of the first successful operation. A retry with changed inputs is rejected. Concurrent requests using the same key can commit only one operation. An unsuccessful operation leaves no partial financial records and can be retried.
+
+### Manual Verification
+
+Both accounts belong to the same household and are visible to the viewer.
+
+| Business date | Event | Checking balance | Savings balance |
+| --- | --- | ---: | ---: |
+| 2026-03-01 | Open checking with €200 | €200 | €0 |
+| 2026-03-05 | Receive €1,000 in salary | €1,200 | €0 |
+| 2026-03-28 | Spend €40 on groceries | €1,160 | €0 |
+| 2026-03-30 | Transfer €50 from checking to savings | €1,110 | €50 |
+| 2026-04-02 | Reverse the grocery expense | €1,150 | €50 |
+
+March closes with €1,160 across the accounts, €1,000 in net income, and €40 in net expenses. The April reversal debits checking and credits `Expense` by €40. With no other April activity, April closes with €1,200 across the accounts, €0 in net income, and −€40 in net expenses. March's figures are unchanged by the April reversal. Replaying the March transfer with the same key and inputs leaves €50 in savings.
