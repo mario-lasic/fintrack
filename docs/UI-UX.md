@@ -121,9 +121,11 @@ FinTrack                        Profile
 Overview
 [+ Add transaction]
 
-Total balance               840,00 €
-Income · This month         900,00 €
-Spending · This month       560,00 €
+Current balance             840,00 €
+
+Activity period       [This month ▾]
+Income                      900,00 €
+Spending                    560,00 €
 
 Recent transactions         View all
 Electricity                 −62,40 €
@@ -132,33 +134,143 @@ Electricity                 −62,40 €
 Overview     Transactions    Accounts
 ```
 
-The balance is current within the selected view. Income and spending use the selected reporting period, initially `This month`. Exclude transfers and opening balances from income and spending. Recent transactions may show authorized transfers and other entries with their type clearly labeled. A confirmed zero balance displays `0,00 €`. Missing or failed totals use their own states so they cannot be mistaken for zero.
+The current balance sums the posted balances of accounts in the active view, including any balances still held in archived accounts. Changing the activity period leaves the current balance in place. If archived accounts have a nonzero balance, show `Includes archived accounts` near the total.
 
-## MVP Workflow Drafts
+Start with `This month` and offer `Last month` and `Custom dates`. Use inclusive business dates in `Europe/Zagreb` for activity. Income and spending are net of their own reversals in the selected period. Exclude transfers and opening balances from these metrics. Recent transactions use the same period and the same visibility rules as the Transactions list. `View all` opens that list with the period applied. A confirmed zero displays `0,00 €`. Use a loading placeholder or an explicit error for unavailable totals.
 
-Each form uses the same sequence of title, financial context, labeled fields, and primary action. The first walkthrough is **Overview → Add transaction → Overview**.
+## MVP Financial Workflows
 
-| Screen | Content and interaction |
+Use the visible household and view throughout each flow. Open substantial forms as pages, with one column on narrow screens. Use confirmation dialogs for archival and reversal. The [privacy rules](ARCHITECTURE.md#arc-02--household-roles-and-privacy) and [financial invariants](ARCHITECTURE.md#arc-04--financial-and-temporal-invariants) apply throughout.
+
+### Accounts
+
+```text
+[Personal · Novak household ▾]
+Accounts                      [Create private account]
+[ ] Show archived accounts
+
+Checking        Checking                    1.110,00 €
+Savings         Savings                        50,00 €
+
+Checking                       Private     Active
+Current balance                             1.110,00 €
+[View transactions]            [Edit name] [Archive account]
+```
+
+```text
+Create account                  Personal · Novak household
+Name                            [Checking             ]
+Type                            [Checking           ▾ ]
+Visibility                      Private
+[Cancel]                        [Create private account]
+```
+
+- Keep the initial list to active accounts. `Show archived accounts` reveals a separate group with an `Archived` label. Archived details retain the balance and history. Posting controls require an eligible active account.
+- Fix visibility at creation from the current view. Offer `Create shared account` to household owners in Shared. Account metadata forms show the name and type at creation and support renaming afterward. Display balances as read-only ledger values. Once opening balances are available, an eligible account offers a separate `Record opening balance` action.
+- `Archive account` opens a dialog with the account name and the effect on future postings and retained history. On success, keep the detail visible, mark it `Archived`, and remove it from posting selectors.
+
+### Browse Transactions
+
+```text
+[Personal · Novak household ▾]
+Transactions                                  [Add transaction]
+[Search] [Date range ▾] [Account ▾] [Category ▾] [Type ▾]
+[Clear filters]
+
+Business date     Description           Account          Amount
+30.03.2026.       Transfer to savings   Checking        −50,00 €
+28.03.2026.       Groceries             Checking        −40,00 €
+
+[Previous]                                      Page 1   [Next]
+```
+
+Sort by business date newest first with stable pagination. Keep active filters visible and return to the filtered list when a user closes a detail. On phones, place secondary filters behind `Filters` and show their active count. The detail shows the authorized business date, type, account, amount, and category or note when applicable. Label a reversal or a reversed original in both the list and detail. Apply the same visibility rules to search matches, row contents, detail links, and totals.
+
+### Record Income or an Expense
+
+```text
+Add transaction                         Personal · Novak household
+[Expense] [Income] [Transfer]
+
+Amount          [48,20 EUR   ]
+Account         [Checking  ▾ ]
+Category        [Groceries ▾ ]
+Business date   [Today's date]
+Note            [Optional    ]
+
+[Cancel]                       [Save to Personal]
+```
+
+Open with `Expense` selected unless the entry point specifies another type. Show categories for the selected type and clear a previous category when it becomes invalid. Offer only writable active accounts in the current view. Preselect a writable account when the entry starts from its detail. Use today's business date by default, allow earlier dates, and show a field error for future dates. Preserve entered values on validation errors. For Shared, show `Save to [household name]`. On success, return to the originating screen in the same context, refresh its data, and offer `View transaction`. If existing filters exclude the new row, preserve those filters and keep the detail link available.
+
+### Transfer Between Accounts
+
+```text
+Transfer                                  Novak household
+
+From account    [Checking · Private     ▾]
+To account      [Household fund · Shared ▾]
+Amount          [50,00 EUR                ]
+Business date   [Today's date             ]
+
+Checking −50,00 €  →  Household fund +50,00 €
+[Cancel]                       [Confirm transfer]
+```
+
+Only offer writable, active accounts in the same household and exclude the selected source from destination choices. If fewer than two eligible accounts are available, explain what is needed before the user can transfer. Show both visibility labels and the direction before posting. Validate both accounts and the date on submission. The confirmation applies to both accounts and the transfer posts atomically.
+
+In a scoped list, show the date, direction, and signed amount for the visible account. When both endpoints fall within the same list scope, show one transfer row with its source, destination, and amount. Account histories still show each account's own direction. In a mixed-visibility transfer, the actor can see both endpoints in the detail while both remain authorized. For a viewer with access to just one side, send only the authorized projection. Omit the hidden account's name, identifier, balance, and identifying notes from every response. Exclude those fields from search matching as well. Offer reversal only to a user who can post to both accounts.
+
+For example, Ana transfers `50,00 €` from private Checking to the shared Household fund. Ana's Personal list shows `−50,00 €` and her Shared list shows `+50,00 €`. Marko, a household owner, sees the shared inflow and its business date under `Transfer from private account`. Marko's detail preserves that same view and the reversal action is unavailable. Neither view records transfer activity as income or spending.
+
+### Reverse or Correct a Transaction
+
+```text
+Transaction                                     Groceries
+Expense                                   −40,00 €
+Checking · Private                      28.03.2026.
+[Reverse transaction]                    [Correct transaction]
+
+Reverse transaction
+Original          Groceries · −40,00 € · 28.03.2026.
+Reversal date     02.04.2026. (correction business date)
+Reason            [Required                           ]
+[Cancel]          [Confirm reversal]
+```
+
+Offer actions on authorized, eligible posted records. The reversal dialog explains that FinTrack will post the opposite entry on the correction business date and retain the original. Use the current business date for the MVP correction flow. Keep focus on `Cancel` initially. Confirm with a reason. After success, show the original as `Reversed` with a link to the reversal for an authorized viewer. If a concurrent action has already reversed it, refresh the original and show that result instead of inviting another submission.
+
+For a financial correction with a replacement, open the relevant entry form with the original values. Show the original and the proposed replacement before `Confirm correction`. Both the reversal and the replacement use the correction business date and commit together. A failure leaves the original as it was and keeps the draft available to correct or retry.
+
+### Empty, Loading, Error, and Success States
+
+| Screen or flow | Empty or unavailable | Loading or saving | Error and recovery | Success |
+|---|---|---|---|---|
+| Overview | No accounts uses the action allowed for the viewer's role. Accounts with no activity show confirmed zero metrics for an empty period and an empty activity message. | Show metric and list placeholders in the active scope. | Explain which data failed and offer `Retry` without displaying placeholder zeros. | Show confirmed totals and activity for the selected date range. |
+| Accounts | Personal offers `Create private account`. A shared owner sees `Create shared account`. Other members see `No shared accounts yet. A household owner can create one.` | Use list placeholders and descriptive saving or archiving labels. | Keep the account form values and show field errors. An unavailable account opens the generic access state. | Open the updated detail and show the confirmation or archival label. |
+| Transactions | With no activity, explain how to add an entry if an eligible account is available. With filters and no matches, offer `Clear filters`. | Preserve filter controls and load a scoped results list. | Offer `Retry` with the same filters. An inaccessible detail opens the generic access state. | Show authorized results and keep the current filters visible. |
+| Income or expense | If there is no writable account, explain what is needed to record an entry in this view. | Show `Saving transaction…` and block repeated submission. | Keep entered values and show amount, date, account, or category errors beside the related field. Show a clear explanation when the resulting cash balance would violate the ledger rules. | Show confirmation and refresh the originating view with a detail link. |
+| Transfer | Explain when two eligible accounts in the same household are needed. | Show `Posting transfer…` and block repeated submission. | Keep the draft on validation rejection. For an account that became unavailable, ask the user to choose an eligible account without exposing details of inaccessible options. | Confirm one transfer and refresh the affected visible balances. |
+| Reversal or correction | Show the current record status and offer actions only when eligible. | Show `Reversing transaction…` or `Correcting transaction…` and block repeated submission. | Retain the reason or replacement draft when validation fails. If the original is already reversed, refresh its detail. | Show the original's updated status and permitted links to the resulting entries. |
+
+### Submission and Retry
+
+Distinguish a server rejection from a missing response. After a confirmed validation rejection, return focus to the error, preserve the draft, and let the user submit a corrected attempt with a new key. When the result of a financial posting is unknown, show `We couldn't confirm whether this was saved.` Lock the submitted values for that attempt and offer `Retry same submission`. A retry uses the same idempotency key, household, and business inputs. A successful replay shows the existing result and refreshes the screen once. Leaving the page does not resend the request. If permissions have changed, use the generic access state.
+
+### UX-03 Design Review
+
+| Scenario | Expected result |
 |---|---|
-| Accounts | Show account name, type, and balance in the active view. Account detail shows `Private` or `Shared` and offers the authorized management actions. The create form identifies the intended visibility before saving. Show archived accounts separately when requested and retain their history. |
-| Transactions | Show recent activity with search and date, account, category, and type filters. Each row opens an authorized detail view. Distinguish an empty history from a search with no matches. |
-| Add transaction | Choose `Expense` or `Income`, then enter amount, account, category, date, and optional note. Restrict the account picker to writable, active accounts in the current view. `Save to Personal` or `Save to [household name]` confirms the destination. On success, return to the originating screen in the same context and refresh its data. |
-| Transfer | Show `From account`, `To account`, amount, and date. Label each account's visibility and show the direction before `Confirm transfer`. Both accounts must be writable by the actor and belong to the same household. In each view's activity list, show the direction and signed amount for that view's account. Details can show both accounts when the viewer has access to both. If access is limited to one side, show its direction, amount, and date using a generic label such as `Transfer from private account`. Omit the hidden account's name, identifier, and balance and any note that could identify it from the data sent to the browser, including detail and search results. |
-| Reverse transaction | From an authorized detail view, show the original entry, reversal date, reason, and `Confirm reversal`. Offer `Reverse transfer` only when the user can post to both accounts. After success, show the original as `Reversed` and link to the reversal when the viewer is authorized to see it. A financial correction uses the reverse-and-replace flow in the roadmap. |
+| Account creation and archival | A member creates a private Cash account. Its visibility is clear. After archiving, it stays in authorized history and is unavailable for new postings. The member sees explanatory text in an empty Shared view. |
+| Income, expense, and filters | Post `1.000,00 €` income and `40,00 €` expense on the scoped checking account. Filter to expenses and see the grocery entry. Submitting `48,205` produces an amount error without posting and retains the other form values. |
+| Repeated submission | Submit a `50,00 €` transfer and lose the response after commit. Retrying the same submission leaves one transfer and credits the destination once. A transfer attempt with the same account twice is rejected before posting. |
+| Mixed visibility | Compare Ana's and Marko's view of the transfer above. Only Ana sees both endpoints and can request reversal. Marko's displayed row, detail, and search results contain only the authorized shared side. |
+| Reversal across periods | With a `200,00 €` March opening balance and the income, expense, and transfer above, visible accounts in the ARC-04 fixture total `1.160,00 €` at the end of March. Reversing the March expense on 2 April leaves March income and spending at `1.000,00 €` and `40,00 €`. April spending is `−40,00 €`, and the current balance is `1.200,00 €` with no other activity. |
 
-| State | Expected behavior |
-|---|---|
-| Empty | Explain the relevant gap. Use `Create private account` in an empty personal view and `Create shared account` for household owners in an empty shared view. Other members see `No shared accounts yet. A household owner can create one.` Use `Add transaction` when the view has accounts but no activity, and `Clear filters` when the current query yields no matches. |
-| Loading | Keep the shell in place and show loading placeholders for the target scope. Clear old financial data from the visible content when switching context. During writes, show an in-progress label and block repeated presses. |
-| Validation or error | Show field errors next to the fields. For a failed read, show `Retry` in the current context. If a posting outcome is unknown, preserve the form and retry the same attempt with the same idempotency key so one submission can result in only one posting. |
-| Success | Show a short confirmation and the updated record or list in the same context. Refresh affected balances and recent activity after the server confirms the write. |
-
-### Mixed-Visibility Transfer Example
-
-Ana transfers `50,00 €` from her private checking account to a shared account in the same household. Her personal overview shows an outflow of `−50,00 €` and her shared overview shows an inflow of `+50,00 €`. She can see both accounts in the transfer detail. Marko, a household owner, sees the shared inflow and date labeled `Transfer from private account`. His view omits Ana's private account details, identifying notes, and the reversal action. The transfer changes both account balances and leaves the monthly income and spending totals unchanged.
+These are design walkthroughs. Browser, authorization, idempotency, and ledger checks belong to the implementation tasks.
 
 ## Review Before Implementation
 
 - **UX-01:** Walk through first sign-in with and without a household, switching between personal and shared views in two households, and opening an inaccessible record. Check that totals, filters, and form destinations reflect the visible scope.
 - **UX-02:** Check the applied color pairs, keyboard focus and order, amount input and formatting, and layouts at narrow widths and at browser zoom. Confirm that summary amounts and the context picker remain legible with long values and household names.
-- **UX-03:** Walk through account creation, income and expense entry, filtered results, transfer, and reversal. Include validation errors, repeat submission, and a private-to-shared transfer viewed by its actor and by another household member. Confirm period and reversal semantics with `ARC-04`.
+- **UX-03:** Use the design review scenarios above to verify the implemented screens, including validation, retries, access rules, and reversal dates.
