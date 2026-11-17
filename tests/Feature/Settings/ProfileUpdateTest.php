@@ -4,6 +4,7 @@ namespace Tests\Feature\Settings;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class ProfileUpdateTest extends TestCase
@@ -95,5 +96,98 @@ class ProfileUpdateTest extends TestCase
             ->assertRedirect(route('profile.edit'));
 
         $this->assertNotNull($user->fresh());
+    }
+
+    public function test_locale_and_timezone_can_be_updated_with_valid_values(): void
+    {
+        $user = User::factory()->create([
+            'locale' => 'hr-HR',
+            'timezone' => 'Europe/Zagreb',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patch(route('profile.update'), [
+                'name' => $user->name,
+                'email' => $user->email,
+                'locale' => 'en-GB',
+                'timezone' => 'UTC',
+            ]);
+
+        $response
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('profile.edit'));
+
+        $user->refresh();
+
+        $this->assertSame('en-GB', $user->locale);
+        $this->assertSame('UTC', $user->timezone);
+    }
+
+    public function test_locale_and_timezone_validation_fails_for_invalid_or_null_values(): void
+    {
+        $user = User::factory()->create([
+            'locale' => 'hr-HR',
+            'timezone' => 'Europe/Zagreb',
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('profile.update'), [
+                'name' => $user->name,
+                'email' => $user->email,
+                'locale' => 'xx-INVALID',
+                'timezone' => 'Mars/Olympus_Mons',
+            ])
+            ->assertSessionHasErrors(['locale', 'timezone']);
+
+        $user->refresh();
+        $this->assertSame('hr-HR', $user->locale);
+        $this->assertSame('Europe/Zagreb', $user->timezone);
+
+        $this->actingAs($user)
+            ->patch(route('profile.update'), [
+                'name' => $user->name,
+                'email' => $user->email,
+                'locale' => null,
+                'timezone' => null,
+            ])
+            ->assertSessionHasErrors(['locale', 'timezone']);
+
+        $user->refresh();
+        $this->assertSame('hr-HR', $user->locale);
+        $this->assertSame('Europe/Zagreb', $user->timezone);
+    }
+
+    public function test_profile_update_ignores_protected_attributes(): void
+    {
+        $originalVerifiedAt = now()->subDays(5)->startOfSecond();
+
+        $user = User::factory()->create([
+            'password' => Hash::make('OriginalPassword123!'),
+            'email_verified_at' => $originalVerifiedAt,
+            'locale' => 'hr-HR',
+            'timezone' => 'Europe/Zagreb',
+        ]);
+
+        $originalPasswordHash = $user->password;
+
+        $response = $this
+            ->actingAs($user)
+            ->patch(route('profile.update'), [
+                'name' => 'NewName',
+                'email' => $user->email,
+                'locale' => 'en-GB',
+                'timezone' => 'UTC',
+                'password' => 'Password123!',
+                'email_verified_at' => now()->addYear(),
+            ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $user->refresh();
+
+        $this->assertSame('NewName', $user->name);
+        $this->assertSame($originalPasswordHash, $user->password);
+        $this->assertTrue($user->email_verified_at->equalTo($originalVerifiedAt));
     }
 }

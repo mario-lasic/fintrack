@@ -35,5 +35,10 @@ class RegistrationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+        $this->assertDatabaseHas('users', [
+            'email' => 'test@example.com',
+            'locale' => 'hr-HR',
+            'timezone' => 'Europe/Zagreb',
+        ]);
     }
 }
