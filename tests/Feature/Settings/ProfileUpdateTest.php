@@ -190,4 +190,41 @@ class ProfileUpdateTest extends TestCase
         $this->assertSame($originalPasswordHash, $user->password);
         $this->assertTrue($user->email_verified_at->equalTo($originalVerifiedAt));
     }
+
+    public function test_profile_saves_email_in_lowercase(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'original@example.com',
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('profile.update'), [
+                'name' => $user->name,
+                'email' => 'New@Example.com',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('profile.edit'));
+
+        $this->assertSame('new@example.com', $user->refresh()->email);
+    }
+
+    public function test_profile_rejects_another_users_email_with_different_case(): void
+    {
+        User::factory()->create([
+            'email' => 'taken@example.com',
+        ]);
+
+        $user = User::factory()->create([
+            'email' => 'original@example.com',
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('profile.update'), [
+                'name' => $user->name,
+                'email' => 'Taken@Example.com',
+            ])
+            ->assertSessionHasErrors('email');
+
+        $this->assertSame('original@example.com', $user->refresh()->email);
+    }
 }

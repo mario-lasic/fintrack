@@ -5,6 +5,7 @@ namespace App\Http\Requests\Settings;
 use App\Concerns\ProfileValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class ProfileUpdateRequest extends FormRequest
@@ -31,5 +32,13 @@ class ProfileUpdateRequest extends FormRequest
             ],
             'timezone' => ['timezone', 'sometimes', 'required'],
         ];
+    }
+    protected function prepareForValidation(): void
+    {
+        $email = $this->input('email');
+        if (is_string($email)) {
+            $email = Str::lower($email);
+            $this->merge(['email' => $email]);
+        }
     }
 }
