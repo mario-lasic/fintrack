@@ -107,8 +107,8 @@ class EmailVerificationTest extends TestCase
         $response->assertRedirect(route('dashboard', absolute: false));
     }
 
-    public function test_already_verified_user_visiting_verification_link_is_redirected_without_firing_event_again(): void
-    {
+    public function test_already_verified_user_visiting_verification_link_is_redirected_without_firing_event_again(
+    ): void {
         $user = User::factory()->create();
 
         Event::fake();
@@ -124,5 +124,19 @@ class EmailVerificationTest extends TestCase
 
         Event::assertNotDispatched(Verified::class);
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_email_cannot_be_verified_with_expired_link()
+    {
+        $user = User::factory()->unverified()->create();
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->subMinute(),
+            ['id' => $user->id, 'hash' => sha1($user->email)],
+        );
+        $response = $this->actingAs($user)->get($verificationUrl);
+        $response->assertForbidden();
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
     }
 }

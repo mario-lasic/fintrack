@@ -94,11 +94,15 @@ class AuthenticationTest extends TestCase
     public function test_users_can_logout(): void
     {
         $user = User::factory()->create();
+        $this->withSession(['logout_marker' => 'present']);
 
         $response = $this->actingAs($user)->post(route('logout'));
 
         $response->assertRedirect(route('home'));
         $this->assertGuest();
+        $response->assertSessionMissing('logout_marker');
+        $response = $this->get(route('dashboard'));
+        $response->assertRedirect(route('login'));
     }
 
     public function test_login_is_rate_limited_after_five_attempts(): void
