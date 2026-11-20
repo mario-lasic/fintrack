@@ -21,4 +21,8 @@ class ProfileDeleteRequest extends FormRequest
             'password' => $this->currentPasswordRules(),
         ];
     }
+    public function authorize(): bool
+    {
+        return false;
+    }
 }

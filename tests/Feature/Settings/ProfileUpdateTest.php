@@ -62,7 +62,7 @@ class ProfileUpdateTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
-    public function test_user_can_delete_their_account()
+    public function test_user_cannot_delete_their_account_while_deletion_is_disabled()
     {
         $user = User::factory()->create();
 
@@ -72,31 +72,11 @@ class ProfileUpdateTest extends TestCase
                 'password' => 'password',
             ]);
 
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect(route('home'));
-
-        $this->assertGuest();
-        $this->assertNull($user->fresh());
+        $response->assertForbidden();
+        $this->assertAuthenticatedAs($user);
+        $this->assertModelExists($user);
     }
 
-    public function test_correct_password_must_be_provided_to_delete_account()
-    {
-        $user = User::factory()->create();
-
-        $response = $this
-            ->actingAs($user)
-            ->from(route('profile.edit'))
-            ->delete(route('profile.destroy'), [
-                'password' => 'wrong-password',
-            ]);
-
-        $response
-            ->assertSessionHasErrors('password')
-            ->assertRedirect(route('profile.edit'));
-
-        $this->assertNotNull($user->fresh());
-    }
 
     public function test_locale_and_timezone_can_be_updated_with_valid_values(): void
     {
@@ -226,5 +206,41 @@ class ProfileUpdateTest extends TestCase
             ->assertSessionHasErrors('email');
 
         $this->assertSame('original@example.com', $user->refresh()->email);
+    }
+
+    public function test_guest_cannot_update_a_profile()
+    {
+        $user = User::factory()->create([
+            'name' => 'initialName',
+            'email' => 'initial@email.com',
+        ]);
+        $response = $this->patch(route('profile.update'), [
+            'name' => 'TestName',
+            'email' => 'Taken@Example.com',
+        ]);
+        $user->refresh();
+
+        $this->assertEquals('initialName', $user->name);
+        $this->assertEquals('initial@email.com', $user->email);
+        $response->assertRedirect(route('login'));
+    }
+
+    public function test_profile_update_rejects_invalid_name_and_email()
+    {
+        $user = User::factory()->create([
+            'name' => 'initialName',
+            'email' => 'initial@email.com',
+        ]);
+
+        $response = $this->actingAs($user)->patch(route('profile.update'), [
+            'name' => '',
+            'email' => 'invalid-email',
+        ]);
+
+        $user->refresh();
+
+        $response->assertSessionHasErrors(['name', 'email']);
+        $this->assertEquals('initialName', $user->name);
+        $this->assertEquals('initial@email.com', $user->email);
     }
 }
