@@ -13,5 +13,7 @@ Route::post('/households', [HouseholdController::class, 'store'])->middleware('a
 Route::post('/households/{household}/activate', [HouseholdController::class, 'activate'])->middleware('auth')->name(
     'households.activate'
 );
+Route::post('/households/{household}/invitations', [HouseholdController::class, 'storeInvitation'])->middleware('auth')
+    ->name('household.invitations.store');
 
-require __DIR__ . '/settings.php';
+require __DIR__.'/settings.php';
