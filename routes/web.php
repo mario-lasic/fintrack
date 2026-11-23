@@ -10,5 +10,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::post('/households', [HouseholdController::class, 'store'])->middleware('auth')->name('households.store');
+Route::post('/households/{household}/activate', [HouseholdController::class, 'activate'])->middleware('auth')->name(
+    'households.activate'
+);
 
 require __DIR__ . '/settings.php';
