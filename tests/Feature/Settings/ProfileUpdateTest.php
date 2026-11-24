@@ -77,7 +77,6 @@ class ProfileUpdateTest extends TestCase
         $this->assertModelExists($user);
     }
 
-
     public function test_locale_and_timezone_can_be_updated_with_valid_values(): void
     {
         $user = User::factory()->create([

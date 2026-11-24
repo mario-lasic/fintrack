@@ -33,6 +33,7 @@ class ProfileUpdateRequest extends FormRequest
             'timezone' => ['timezone', 'sometimes', 'required'],
         ];
     }
+
     protected function prepareForValidation(): void
     {
         $email = $this->input('email');
