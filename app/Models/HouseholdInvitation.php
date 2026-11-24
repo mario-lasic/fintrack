@@ -23,11 +23,6 @@ class HouseholdInvitation extends Model
         ];
     }
 
-    public function isExpired(): bool
-    {
-        return $this->expires_at->lessThanOrEqualTo(now());
-    }
-
     /**
      * @return BelongsTo<Household, $this>
      */
@@ -42,5 +37,20 @@ class HouseholdInvitation extends Model
     public function invitedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'invited_by_user_id');
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->expires_at->lessThanOrEqualTo(now());
+    }
+
+    public function isAccepted(): bool
+    {
+        return $this->accepted_at !== null;
+    }
+
+    public function isPending(): bool
+    {
+        return ! $this->isAccepted() && ! $this->isExpired();
     }
 }
