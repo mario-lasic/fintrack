@@ -19,6 +19,7 @@ class HouseholdInvitation extends Model
     {
         return [
             'expires_at' => 'datetime',
+            'accepted_at' => 'datetime',
         ];
     }
 

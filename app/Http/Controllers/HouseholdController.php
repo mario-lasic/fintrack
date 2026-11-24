@@ -22,10 +22,11 @@ class HouseholdController extends Controller
     public function activate(Household $household, Request $request)
     {
         $user = $request->user();
-        $hasMembership = $user->householdMemberships()
+        $hasActiveMembership = $user->householdMemberships()
             ->where(['household_id' => $household->id])
+            ->whereNull('deactivated_at')
             ->exists();
-        if (! $hasMembership) {
+        if (! $hasActiveMembership) {
             abort(403);
         }
         $request->session()->put(['active_household_id' => $household->id]);
