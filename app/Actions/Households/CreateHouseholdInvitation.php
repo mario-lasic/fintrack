@@ -5,6 +5,7 @@ namespace App\Actions\Households;
 use App\Mail\HouseholdInvitationMail;
 use App\Models\Household;
 use App\Models\HouseholdInvitation;
+use App\Models\HouseholdMembership;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -20,11 +21,23 @@ class CreateHouseholdInvitation
         $invitation = DB::transaction(function () use ($household, $invitedBy, $email, $token) {
             Household::whereKey($household->id)->lockForUpdate()->firstOrFail();
 
+            $isActiveMember = HouseholdMembership::where('household_id', $household->id)
+                ->whereNull('deactivated_at')
+                ->whereHas('user', function ($query) use ($email) {
+                    $query->where('email', $email);
+                })->exists();
+
+            if ($isActiveMember) {
+                throw ValidationException::withMessages([
+                    'email' => 'This email address already belongs to an active household member.',
+                ]);
+            }
+
             $existing = HouseholdInvitation::where('household_id', $household->id)
                 ->where('email', $email)
                 ->first();
 
-            if ($existing && ! $existing->isExpired()) {
+            if ($existing !== null && $existing->isPending()) {
                 throw ValidationException::withMessages([
                     'email' => 'This email address already has a pending invitation.',
                 ]);
@@ -36,8 +49,10 @@ class CreateHouseholdInvitation
                 'invited_by_user_id' => $invitedBy->id,
             ];
 
-            if ($existing) {
-                $existing->update($data);
+            if ($existing !== null) {
+                $existing->accepted_at = null;
+                $existing->fill($data);
+                $existing->save();
 
                 return $existing;
             }
