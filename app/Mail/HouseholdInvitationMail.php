@@ -36,8 +36,13 @@ class HouseholdInvitationMail extends Mailable
      */
     public function content(): Content
     {
+        $invitationUrl = route('household.invitations.show', ['token' => $this->token]);
+
         return new Content(
             markdown: 'mail.households.invitation',
+            with: [
+                'invitationUrl' => $invitationUrl,
+            ]
         );
     }
 

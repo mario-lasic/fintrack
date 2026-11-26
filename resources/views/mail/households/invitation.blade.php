@@ -1,12 +1,20 @@
 <x-mail::message>
-# Introduction
+    # Household Invitation
 
-The body of your message.
+    You have been invited to join a household on FinTrack.
 
-<x-mail::button :url="''">
-Button Text
-</x-mail::button>
+    Click the button below to review and accept your invitation.
 
-Thanks,<br>
-{{ config('app.name') }}
+    <x-mail::button :url="$invitationUrl">
+        Accept invitation
+    </x-mail::button>
+
+    <x-mail::panel>
+        This invitation expires 24 hours after it is issued.
+    </x-mail::panel>
+
+    If you were not expecting this invitation, you can safely ignore this email.
+
+    Thanks,<br>
+    {{ config('app.name') }}
 </x-mail::message>
