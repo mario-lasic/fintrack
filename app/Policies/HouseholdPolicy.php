@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Policies;
+
+use App\Models\Household;
+use App\Models\User;
+
+class HouseholdPolicy
+{
+    /**
+     * Create a new policy instance.
+     */
+    public function __construct()
+    {
+        //
+    }
+
+    public function activate(User $user, Household $household): bool
+    {
+        return $user->householdMemberships()
+            ->where(['household_id' => $household->id])
+            ->whereNull('deactivated_at')
+            ->exists();
+    }
+}
