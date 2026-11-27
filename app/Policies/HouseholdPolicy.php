@@ -31,4 +31,13 @@ class HouseholdPolicy
             ->whereNull('deactivated_at')
             ->exists();
     }
+
+    public function leave(User $user, Household $household): bool
+    {
+        return $user->householdMemberships()
+            ->where('household_id', $household->id)
+            ->where('role', 'member')
+            ->whereNull('deactivated_at')
+            ->exists();
+    }
 }
