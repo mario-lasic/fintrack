@@ -16,6 +16,11 @@ class Household extends Model
         return $this->hasMany(HouseholdMembership::class);
     }
 
+    public function activeOwnerMemberships(): HasMany
+    {
+        return $this->memberships()->whereRole('owner')->whereNull('deactivated_at');
+    }
+
     protected function casts(): array
     {
         return [

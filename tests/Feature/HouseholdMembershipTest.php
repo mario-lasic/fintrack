@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Households\CreateHousehold;
 use App\Models\Household;
 use App\Models\HouseholdMembership;
 use App\Models\User;
@@ -122,5 +123,40 @@ class HouseholdMembershipTest extends TestCase
             $this->assertEquals('23503', $e->getCode());
         }
         $this->assertDatabaseEmpty('household_memberships');
+    }
+
+    public function test_active_owner_memberships_only_include_active_owners_of_the_household(): void
+    {
+        $ownerA = User::factory()->create();
+        $ownerB = User::factory()->create();
+        $ownerC = User::factory()->create();
+        $memberD = User::factory()->create();
+        $ownerE = User::factory()->create();
+
+        $action = new CreateHousehold;
+
+        $household = $action->handle($ownerA, 'Target household');
+        $action->handle($ownerE, 'Other household');
+
+        $memberships = [
+            [$ownerB, 'owner', null],
+            [$ownerC, 'owner', now()],
+            [$memberD, 'member', null],
+        ];
+
+        foreach ($memberships as [$user, $role, $deactivatedAt]) {
+            $membership = new HouseholdMembership;
+            $membership->household_id = $household->id;
+            $membership->user_id = $user->id;
+            $membership->role = $role;
+            $membership->deactivated_at = $deactivatedAt;
+            $membership->save();
+        }
+
+        $expected = [$ownerA->id, $ownerB->id];
+
+        $activeOwnerMemberships = $household->activeOwnerMemberships();
+        $this->assertEqualsCanonicalizing($expected,
+            $activeOwnerMemberships->pluck('user_id')->all());
     }
 }
