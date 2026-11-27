@@ -8,6 +8,7 @@ use App\Models\HouseholdInvitation;
 use App\Models\HouseholdMembership;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -20,6 +21,8 @@ class CreateHouseholdInvitation
 
         $invitation = DB::transaction(function () use ($household, $invitedBy, $email, $token) {
             Household::whereKey($household->id)->lockForUpdate()->firstOrFail();
+
+            Gate::forUser($invitedBy)->authorize('invite', $household);
 
             $isActiveMember = HouseholdMembership::where('household_id', $household->id)
                 ->whereNull('deactivated_at')
