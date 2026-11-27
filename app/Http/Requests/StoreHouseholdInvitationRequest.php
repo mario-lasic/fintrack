@@ -22,11 +22,7 @@ class StoreHouseholdInvitationRequest extends FormRequest
             return false;
         }
 
-        return $user->householdMemberships()
-            ->where('household_id', $household->id)
-            ->where('role', 'owner')
-            ->whereNull('deactivated_at')
-            ->exists();
+        return $user->can('invite', $household);
     }
 
     protected function prepareForValidation(): void

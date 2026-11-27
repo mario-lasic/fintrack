@@ -22,4 +22,13 @@ class HouseholdPolicy
             ->whereNull('deactivated_at')
             ->exists();
     }
+
+    public function invite(User $user, Household $household): bool
+    {
+        return $user->householdMemberships()
+            ->where('household_id', $household->id)
+            ->where('role', 'owner')
+            ->whereNull('deactivated_at')
+            ->exists();
+    }
 }
