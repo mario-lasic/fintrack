@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Actions\Households\ResolveActiveHousehold;
+use App\Actions\Households\CreateHousehold;
 use App\Models\Household;
 use App\Models\HouseholdMembership;
 use App\Models\User;
@@ -39,5 +40,29 @@ class ResolveActiveHouseholdTest extends TestCase
 
         $this->assertNull($result);
         $this->assertFalse($session->exists('active_household_id'));
+    }
+
+    public function test_deactivated_membership_invalidates_active_household_context(): void
+    {
+        $owner = User::factory()->create();
+        $member = User::factory()->create();
+
+        $household = app(CreateHousehold::class)
+            ->handle($owner, 'Test Household');
+
+        $membership = new HouseholdMembership;
+        $membership->household_id = $household->id;
+        $membership->user_id = $member->id;
+        $membership->role = 'member';
+        $membership->deactivated_at = now();
+        $membership->save();
+
+        $session = app('session.store');
+        $session->put('active_household_id', $household->id);
+
+        $resolver = new ResolveActiveHousehold;
+        $response = $resolver->handle($member, $session);
+        $this->assertNull($response);
+        $this->assertFalse($session->has('active_household_id'));
     }
 }

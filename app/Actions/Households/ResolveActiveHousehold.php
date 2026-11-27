@@ -16,13 +16,13 @@ class ResolveActiveHousehold
             return null;
         }
 
-        $isMember = $user->householdMemberships()
+        $hasActiveMembership = $user->householdMemberships()
             ->where('household_id', $householdId)
+            ->whereNull('deactivated_at')
             ->exists();
 
-        if (! $isMember) {
+        if (! $hasActiveMembership) {
             $session->forget('active_household_id');
-
             return null;
         }
 
