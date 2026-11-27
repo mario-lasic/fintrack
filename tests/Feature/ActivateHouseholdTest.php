@@ -59,6 +59,29 @@ class ActivateHouseholdTest extends TestCase
         $response->assertSessionMissing('active_household_id');
     }
 
+    public function test_deactivated_member_cannot_activate_a_household(): void
+    {
+        $user = User::factory()->create();
+        $owner = User::factory()->create();
+
+        $currentHousehold = $this->createHouseholdFor($user, 'Current household', 'owner');
+        $targetHousehold = $this->createHouseholdFor($owner, 'Target household', 'owner');
+
+        $membership = new HouseholdMembership;
+        $membership->user_id = $user->id;
+        $membership->household_id = $targetHousehold->id;
+        $membership->role = 'member';
+        $membership->deactivated_at = now();
+        $membership->save();
+
+
+        $response = $this->actingAs($user)
+            ->withSession(['active_household_id' => $currentHousehold->id])
+            ->post(route('households.activate', ['household' => $targetHousehold]));
+        $response->assertForbidden();
+        $response->assertSessionHas(['active_household_id' => $currentHousehold->id]);
+    }
+
     private function createHouseholdFor(User $user, string $name, string $role = 'member'): Household
     {
         $household = new Household;
